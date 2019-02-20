@@ -11,7 +11,9 @@ var async = require('async');
 
 var GeoPoint = require('loopback-datasource-juggler').GeoPoint;
 
-var Superhero, User, Post, PostWithStringId, db;
+var Superhero, User, Post, PostWithStringId, db, PostWithObjectId,
+  PostWithObjectId, PostWithNumberUnderscoreId, PostWithNumberId,
+  Category, UserWithRenamedColumns, PostWithStringIdAndRenamedColumns, Employee;
 
 describe('lazyConnect', function() {
   it('should skip connect phase (lazyConnect = true)', function(done) {
@@ -38,8 +40,58 @@ describe('lazyConnect', function() {
     });
 
     ds.on('error', function(err) {
-      err.message.should.match(/connect ECONNREFUSED/);
+      err.message.should.match(/failed to connect to server/);
       done();
+    });
+  });
+
+  it('should connect on execute (lazyConnect = true)', function(done) {
+    var ds = getDataSource({
+      host: '127.0.0.1',
+      port: config.port,
+      lazyConnect: true,
+    });
+
+    ds.define('TestLazy', {
+      value: { type: String },
+    });
+
+    ds.connector.execute('TestLazy', 'insert', { 'value': 'test value' }, function(err, success) {
+      if (err) {
+        done(err);
+      } else {
+        done();
+      }
+    });
+  });
+
+  it('should reconnect on execute when disconnected (lazyConnect = true)', function(done) {
+    var ds = getDataSource({
+      host: '127.0.0.1',
+      port: config.port,
+      lazyConnect: true,
+    });
+
+    ds.define('TestLazy', {
+      value: { type: String },
+    });
+
+    ds.connector.should.not.have.property('db');
+
+    ds.connector.execute('TestLazy', 'insert', { 'value': 'test value' }, function(err, success) {
+      if (err) done(err);
+      var id = success.insertedIds[0];
+      ds.connector.should.have.property('db');
+      ds.connector.db.should.have.property('topology');
+      ds.connector.db.topology.should.have.property('isDestroyed');
+      ds.connector.db.topology.isDestroyed().should.be.false;
+      ds.connector.disconnect();
+      ds.connector.db.topology.isDestroyed().should.be.true;
+      ds.connector.execute('TestLazy', 'findOne', { _id: id }, function(err, data) {
+        if (err) done(err);
+        ds.connector.db.topology.isDestroyed().should.be.false;
+        done();
+      });
     });
   });
 });
@@ -64,15 +116,35 @@ describe('mongodb connector', function() {
       },
     });
 
+    UserWithRenamedColumns = db.define('UserWithRenamedColumns', {
+      renamedName: { type: String, index: true, mongodb: { column: 'name' }},
+      renamedEmail: { type: String, index: true, unique: true, mongodb: { field: 'email' }},
+      age: Number,
+      icon: Buffer,
+    }, {
+      mongodb: {
+        collection: 'User', // Overlay on the User collection
+      },
+    });
+
     Superhero = db.define('Superhero', {
       name: { type: String, index: true },
       power: { type: String, index: true, unique: true },
       address: { type: String, required: false, index: { mongodb: { unique: false, sparse: true }}},
       description: { type: String, required: false },
-      geometry: { type: Object, required: false, index: { mongodb: { kind: '2dsphere' }}},
+      location: { type: Object, required: false },
       age: Number,
       icon: Buffer,
-    }, { mongodb: { collection: 'sh' }});
+    }, {
+      mongodb: {
+        collection: 'sh',
+      },
+      indexes: {
+        'geojson_location_geometry': {
+          'location.geometry': '2dsphere',
+        },
+      },
+    });
 
     Post = db.define('Post', {
       title: { type: String, length: 255, index: true },
@@ -82,6 +154,7 @@ describe('mongodb connector', function() {
       mongodb: {
         collection: 'PostCollection', // Customize the collection name
       },
+      forceId: false,
     });
 
     Product = db.define('Product', {
@@ -93,6 +166,7 @@ describe('mongodb connector', function() {
       mongodb: {
         collection: 'ProductCollection', // Customize the collection name
       },
+      forceId: false,
     });
 
     PostWithStringId = db.define('PostWithStringId', {
@@ -117,6 +191,21 @@ describe('mongodb connector', function() {
       id: { type: Number, id: true },
       title: { type: String, length: 255, index: true },
       content: { type: String },
+    });
+
+    Category = db.define('Category', {
+      title: { type: String, length: 255, index: true },
+      posts: { type: [db.ObjectID], index: true },
+    });
+
+    PostWithStringIdAndRenamedColumns = db.define('PostWithStringIdAndRenamedColumns', {
+      id: { type: String, id: true },
+      renamedTitle: { type: String, length: 255, index: true, mongodb: { fieldName: 'title' }},
+      renamedContent: { type: String, mongodb: { columnName: 'content' }},
+    }, {
+      mongodb: {
+        collection: 'PostWithStringId', // Overlay on the PostWithStringId collection
+      },
     });
 
     User.hasMany(Post);
@@ -145,15 +234,100 @@ describe('mongodb connector', function() {
       db.ping(done);
     });
 
-    it('should report connection errors', function(done) {
+    it('should report connection errors with invalid config', function(done) {
       var ds = getDataSource({
         host: 'localhost',
         port: 4, // unassigned by IANA
       });
       ds.ping(function(err) {
         (!!err).should.be.true;
-        err.message.should.match(/connect ECONNREFUSED/);
+        err.message.should.match(/failed to connect to server/);
         done();
+      });
+    });
+
+    it('ignores invalid option', function(done) {
+      var configWithInvalidOption = config;
+      configWithInvalidOption.invalidOption = 'invalid';
+      var ds = getDataSource(configWithInvalidOption);
+      ds.ping(done);
+    });
+  });
+
+  describe('order filters', function() {
+    var data = [{
+      id: 1,
+      title: 'Senior Software Developer',
+      name: 'Foo',
+      contact: 'foo@foo.com',
+    }, {
+      id: 3,
+      title: 'Lead Developer',
+      name: 'Baz',
+      contact: 'baz@baz.com',
+    }, {
+      id: 5,
+      title: 'Senior Architect',
+      name: 'Bar',
+      contact: 'bar@bar.com',
+    }];
+    before(function(done) {
+      db = getDataSource();
+
+      Employee = db.define('Employee', {
+        id: { type: Number, id: true },
+        title: { type: String, length: 255 },
+        name: { type: String },
+        contact: { type: String },
+      });
+
+      db.automigrate(function(err) {
+        should.not.exist(err);
+        Employee.create(data, done);
+      });
+    });
+
+    after(function(done) {
+      Employee.destroyAll(done);
+    });
+
+    context('using buildSort directly', function() {
+      it('sort in descending order', function(done) {
+        var sort = db.connector.buildSort('Employee', 'id DESC');
+        sort.should.have.property('_id');
+        sort._id.should.equal(-1);
+        done();
+      });
+      it('sort in ascending order', function(done) {
+        var sort = db.connector.buildSort('Employee', 'id ASC');
+        sort.should.have.property('_id');
+        sort._id.should.equal(1);
+        done();
+      });
+    });
+
+    context('using all with order filter', function() {
+      it('find instances in descending order', function(done) {
+        Employee.all({ order: 'id DESC' }, function(err, result) {
+          should.not.exist(err);
+          should.exist(result);
+          result.length.should.equal(data.length);
+          result[0].toObject().should.deepEqual(data[2]);
+          result[1].toObject().should.deepEqual(data[1]);
+          result[2].toObject().should.deepEqual(data[0]);
+          done();
+        });
+      });
+      it('find instances in ascending order', function(done) {
+        Employee.all({ order: 'id ASC' }, function(err, result) {
+          should.not.exist(err);
+          should.exist(result);
+          result.length.should.equal(data.length);
+          result[0].toObject().should.deepEqual(data[0]);
+          result[1].toObject().should.deepEqual(data[1]);
+          result[2].toObject().should.deepEqual(data[2]);
+          done();
+        });
       });
     });
   });
@@ -181,7 +355,7 @@ describe('mongodb connector', function() {
         /* eslint-disable camelcase */
         var indexes =
         { _id_: [['_id', 1]],
-          geometry_2dsphere: [['geometry', '2dsphere']],
+          geojson_location_geometry: [['location.geometry', '2dsphere']],
           power_1: [['power', 1]],
           name_1: [['name', 1]],
           address_1: [['address', 1]] };
@@ -586,6 +760,31 @@ describe('mongodb connector', function() {
         });
       });
 
+      it('should use $set by default if no operator is supplied (using renamed columns)', function(done) {
+        User.create({ name: 'Al', age: 31, email: 'al@strongloop' }, function(err1, createdusers1) {
+          should.not.exist(err1);
+          User.create({ name: 'Simon', age: 32, email: 'simon@strongloop' }, function(err2, createdusers2) {
+            should.not.exist(err2);
+            User.create({ name: 'Ray', age: 31, email: 'ray@strongloop' }, function(err3, createdusers3) {
+              should.not.exist(err3);
+
+              UserWithRenamedColumns.updateAll({ name: 'Simon' }, { renamedName: 'Alex' }, function(err, updatedusers) {
+                should.not.exist(err);
+                updatedusers.should.have.property('count', 1);
+
+                User.find({ where: { name: 'Alex' }}, function(err, founduser) {
+                  should.not.exist(err);
+                  founduser.length.should.be.equal(1);
+                  founduser[0].name.should.be.equal('Alex');
+
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+
       it('should be possible to enable per model settings', function(done) {
         User.dataSource.settings.allowExtendedOperators = null;
         User.settings.mongodb = { allowExtendedOperators: true };
@@ -806,6 +1005,35 @@ describe('mongodb connector', function() {
     });
   });
 
+  it('updateAttributes should update the instance', function(done) {
+    Post.create({ title: 'a', content: 'AAA' }, function(err, post) {
+      post.updateAttributes({ title: 'b' }, function(err, p) {
+        should.not.exist(err);
+        p.id.should.be.equal(post.id);
+        p.title.should.be.equal('b');
+
+        Post.findById(post.id, function(err, p) {
+          p.id.should.be.eql(post.id);
+          p.title.should.be.equal('b');
+
+          done();
+        });
+      });
+    });
+  });
+
+  it('updateAttributes should not throw an error when no attributes are given', function(done) {
+    Post.create({ title: 'a', content: 'AAA' }, function(err, post) {
+      post.updateAttributes({}, function(err, p) {
+        should.not.exist(err);
+        p.id.should.be.equal(post.id);
+        p.title.should.be.equal('a');
+
+        done();
+      });
+    });
+  });
+
   it('updateAttributes: $addToSet should append item to an Array if it doesn\'t already exist', function(done) {
     Product.dataSource.settings.allowExtendedOperators = true;
     Product.create({ name: 'bread', price: 100, pricehistory: [{ '2014-11-11': 90 }] },
@@ -847,7 +1075,6 @@ describe('mongodb connector', function() {
       });
     });
   });
-
 
   it('updateOrCreate: $addToSet should not append item to an Array if it does already exist', function(done) {
     Product.dataSource.settings.allowExtendedOperators = true;
@@ -1348,14 +1575,88 @@ describe('mongodb connector', function() {
     });
   });
 
-  it('create should convert id from string to ObjectID if format matches',
+  it('create should convert id from ObjectID to string', function(done) {
+    var oid = new db.ObjectID();
+    var sid = oid.toString();
+    PostWithStringId.create({ id: oid, title: 'c', content: 'CCC' }, function(err, post) {
+      post.id.should.be.a.string;
+      PostWithStringId.findById(oid, function(err, post) {
+        should.not.exist(err);
+        should.not.exist(post._id);
+        post.id.should.be.a.string;
+        post.id.should.be.equal(sid);
+
+        done();
+      });
+    });
+  });
+
+  it('create should convert id from string to ObjectID', function(done) {
+    var oid = new db.ObjectID();
+    var sid = oid.toString();
+    Post.create({ id: sid, title: 'c', content: 'CCC' }, function(err, post) {
+      post.id.should.be.an.instanceOf(db.ObjectID);
+      Post.findById(sid, function(err, post) {
+        should.not.exist(err);
+        should.not.exist(post._id);
+        post.id.should.be.an.instanceOf(db.ObjectID);
+        post.id.should.be.eql(oid);
+
+        done();
+      });
+    });
+  });
+
+  it('create should convert id from string to ObjectID - Array property', function(done) {
+    Post.create({ title: 'c', content: 'CCC' }, function(err, post) {
+      Category.create({ title: 'a', posts: [String(post.id)] }, function(err, category) {
+        category.id.should.be.an.instanceOf(db.ObjectID);
+        category.posts[0].should.be.an.instanceOf(db.ObjectID);
+        Category.findOne({ where: { posts: post.id }}, function(err, c) {
+          should.not.exist(err);
+          c.id.should.be.an.instanceOf(db.ObjectID);
+          c.posts[0].should.be.an.instanceOf(db.ObjectID);
+          c.id.should.be.eql(category.id);
+
+          done();
+        });
+      });
+    });
+  });
+
+  it('create should support renamed column names (using property syntax first)',
     function(done) {
       var oid = new db.ObjectID().toString();
       PostWithStringId.create({ id: oid, title: 'c', content: 'CCC' }, function(err, post) {
+        PostWithStringIdAndRenamedColumns.findById(oid, function(err, post) {
+          should.not.exist(err);
+          should.not.exist(post._id);
+          post.id.should.be.equal(oid);
+
+          should.exist(post.renamedTitle);
+          should.exist(post.renamedContent);
+          post.renamedTitle.should.be.equal('c');
+          post.renamedContent.should.be.equal('CCC');
+
+          done();
+        });
+      });
+    });
+
+  it('create should support renamed column names (using db syntax first)',
+    function(done) {
+      var oid = new db.ObjectID().toString();
+      PostWithStringIdAndRenamedColumns.create({ id: oid, renamedTitle: 'c',
+        renamedContent: 'CCC' }, function(err, post) {
         PostWithStringId.findById(oid, function(err, post) {
           should.not.exist(err);
           should.not.exist(post._id);
           post.id.should.be.equal(oid);
+
+          should.exist(post.title);
+          should.exist(post.content);
+          post.title.should.be.equal('c');
+          post.content.should.be.equal('CCC');
 
           done();
         });
@@ -1363,7 +1664,7 @@ describe('mongodb connector', function() {
     });
 
   describe('geo queries', function() {
-    var geoDb, PostWithLocation;
+    var geoDb, PostWithLocation, createLocationPost;
 
     before(function() {
       var config = JSON.parse(JSON.stringify(global.config)); // clone config
@@ -1375,6 +1676,23 @@ describe('mongodb connector', function() {
         _id: { type: geoDb.ObjectID, id: true },
         location: { type: GeoPoint, index: true },
       });
+      createLocationPost = function(far) {
+        var point;
+        if (far) {
+          point = new GeoPoint({
+            lat: 31.230416,
+            lng: 121.473701,
+          });
+        } else {
+          point = new GeoPoint({
+            lat: 30.27167 + Math.random() * 0.01,
+            lng: 120.13469600000008 + Math.random() * 0.01,
+          });
+        }
+        return function(callback) {
+          PostWithLocation.create({ location: point }, callback);
+        };
+      };
     });
 
     beforeEach(function(done) {
@@ -1428,12 +1746,196 @@ describe('mongodb connector', function() {
             results.forEach(function(result) {
               var currentDist = testUtils.getDistanceBetweenPoints(coords, result.location);
               currentDist.should.be.aboveOrEqual(dist);
-
               dist = currentDist;
             });
 
             done();
           });
+        });
+      });
+    });
+
+    it('find should be queryable using locations with deep/multiple keys', function(done) {
+      var coords = { lat: 1.25, lng: 20.20 };
+
+      geoDb.autoupdate(function(err) {
+        var heroNumber = 0;
+        var powers = ['fly', 'lasers', 'strength', 'drink'];
+
+        function createSuperheroWithLocation(callback) {
+          heroNumber++;
+
+          Superhero.create({
+            name: 'Hero #' + heroNumber,
+            power: powers[heroNumber - 1],
+            location: {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [
+                  coords.lng,
+                  coords.lat,
+                ],
+              },
+            },
+          }, callback);
+        };
+
+        async.parallel([
+          createSuperheroWithLocation,
+          createSuperheroWithLocation,
+          createSuperheroWithLocation,
+        ], function(err) {
+          if (err) return done(err);
+
+          Superhero.find({
+            where: {
+              and: [
+                {
+                  'location.geometry': {
+                    near: [
+                      coords.lng,
+                      coords.lat,
+                    ],
+                    maxDistance: 50,
+                  },
+                },
+                {
+                  power: 'strength',
+                },
+              ],
+            },
+          }, function(err, results) {
+            if (err) return done(err);
+
+            results.should.have.length(1);
+
+            var dist = 0;
+            results.forEach(function(result) {
+              var currentDist = testUtils.getDistanceBetweenPoints(coords, {
+                lng: result.location.geometry.coordinates[0],
+                lat: result.location.geometry.coordinates[1],
+              });
+              currentDist.should.be.aboveOrEqual(dist);
+              dist = currentDist;
+            });
+
+            done();
+          });
+        });
+      });
+    });
+
+    it('find should be able to query by location via near with maxDistance', function(done) {
+      var coords = { lat: 30.274085, lng: 120.15507000000002 };
+
+      geoDb.autoupdate(function(err) {
+        async.parallel([
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(true),
+        ], function(err) {
+          if (err) return done(err);
+          PostWithLocation.find({
+            where: {
+              location: {
+                near: new GeoPoint(coords),
+                maxDistance: 17000,
+                unit: 'meters',
+              },
+            },
+          }, function(err, results) {
+            if (err) return done(err);
+            results.length.should.be.equal(3);
+            var dist = 0;
+            results.forEach(function(result) {
+              var currentDist = testUtils.getDistanceBetweenPoints(coords, result.location);
+              currentDist.should.be.aboveOrEqual(dist);
+              currentDist.should.be.belowOrEqual(17);
+              dist = currentDist;
+            });
+            done();
+          });
+        });
+      });
+    });
+
+    it('find should be able to query by location via near with minDistance set', function(done) {
+      var coords = { lat: 30.274085, lng: 120.15507000000002 };
+      geoDb.autoupdate(function(err) {
+        async.parallel([
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(true),
+        ], function(err) {
+          if (err) return done(err);
+          PostWithLocation.find({
+            where: {
+              location: {
+                near: new GeoPoint(coords),
+                minDistance: 17000,
+                unit: 'meters',
+              },
+            },
+          }, function(err, results) {
+            if (err) return done(err);
+            results.length.should.be.equal(1);
+            var dist = 0;
+            results.forEach(function(result) {
+              var currentDist = testUtils.getDistanceBetweenPoints(coords, result.location);
+              currentDist.should.be.aboveOrEqual(dist);
+              dist = currentDist;
+            });
+            done();
+          });
+        });
+      });
+    });
+
+    it('find should be able to set unit when query location via near', function(done) {
+      var coords = { lat: 30.274085, lng: 120.15507000000002 };
+
+      geoDb.autoupdate(function(err) {
+        var queryLocation = function(distance, unit, distanceInMeter, numOfResult) {
+          return function(callback) {
+            PostWithLocation.find({
+              where: {
+                location: {
+                  near: new GeoPoint(coords),
+                  maxDistance: distance,
+                  unit: unit,
+                },
+              },
+            }, function(err, results) {
+              if (err) return done(err);
+              results.length.should.be.equal(numOfResult);
+              results.forEach(function(result) {
+                var currentDist = testUtils.getDistanceBetweenPoints(coords, result.location);
+                currentDist.should.be.belowOrEqual(distanceInMeter / 1000);
+              });
+              callback();
+            });
+          };
+        };
+
+
+        async.parallel([
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(false),
+          createLocationPost(true),
+        ], function(err) {
+          if (err) return done(err);
+          async.parallel([
+            queryLocation(10000, undefined, 10000, 3),
+            queryLocation(10, 'miles', 16000, 3),
+            queryLocation(10, 'kilometers', 10000, 3),
+            queryLocation(20000, 'feet', 6096, 3),
+            queryLocation(10000, 'radians', 10000, 3),
+            queryLocation(10000, 'degrees', 10000, 3),
+          ], done);
         });
       });
     });
@@ -1491,6 +1993,26 @@ describe('mongodb connector', function() {
   it('should allow to find using case insensitive like', function(done) {
     Post.create({ title: 'My Post', content: 'Hello' }, function(err, post) {
       Post.find({ where: { title: { like: 'm.+st', options: 'i' }}}, function(err, posts) {
+        should.not.exist(err);
+        posts.should.have.property('length', 1);
+        done();
+      });
+    });
+  });
+
+  it('should allow to find using like with renamed columns', function(done) {
+    PostWithStringId.create({ title: 'My Post', content: 'Hello' }, function(err, post) {
+      PostWithStringIdAndRenamedColumns.find({ where: { renamedTitle: { like: 'M.+st' }}}, function(err, posts) {
+        should.not.exist(err);
+        posts.should.have.property('length', 1);
+        done();
+      });
+    });
+  });
+
+  it('should allow to find using like with renamed columns (inverse create order)', function(done) {
+    PostWithStringIdAndRenamedColumns.create({ renamedTitle: 'My Post', renamedContent: 'Hello' }, function(err, post) {
+      PostWithStringId.find({ where: { title: { like: 'M.+st' }}}, function(err, posts) {
         should.not.exist(err);
         posts.should.have.property('length', 1);
         done();
@@ -1662,6 +2184,55 @@ describe('mongodb connector', function() {
     });
   });
 
+  it('should support where for count (using renamed columns in deep filter ' +
+    'criteria)', function(done) {
+    PostWithStringId.create({ title: 'My Post', content: 'Hello' },
+      function(err, post) {
+        PostWithStringIdAndRenamedColumns.count({
+          and: [{
+            renamedTitle: 'My Post',
+          }, { renamedContent: 'Hello' }],
+        }, function(err, count) {
+          should.not.exist(err);
+          count.should.be.equal(1);
+          PostWithStringIdAndRenamedColumns.count({
+            and: [{
+              renamedTitle: 'My Post1',
+            }, { renamedContent: 'Hello' }],
+          }, function(err, count) {
+            should.not.exist(err);
+            count.should.be.equal(0);
+            done();
+          });
+        });
+      });
+  });
+
+  it('should return info for destroy', function(done) {
+    Post.create({ title: 'My Post', content: 'Hello' }, function(err, post) {
+      post.destroy(function(err, info) {
+        should.not.exist(err);
+        info.should.be.eql({ count: 1 });
+        done();
+      });
+    });
+  });
+
+  it('should export the MongoDB function', function() {
+    var module = require('../');
+    module.MongoDB.should.be.an.instanceOf(Function);
+  });
+
+  it('should export the ObjectID function', function() {
+    var module = require('../');
+    module.ObjectID.should.be.an.instanceOf(Function);
+  });
+
+  it('should export the generateMongoDBURL function', function() {
+    var module = require('../');
+    module.generateMongoDBURL.should.be.an.instanceOf(Function);
+  });
+
   context('regexp operator', function() {
     before(function deleteExistingTestFixtures(done) {
       Post.destroyAll(done);
@@ -1792,6 +2363,169 @@ describe('mongodb connector', function() {
                 done();
               });
             });
+      });
+    });
+  });
+
+  context('like and nlike operator', function() {
+    before(function deleteExistingTestFixtures(done) {
+      Post.destroyAll(done);
+    });
+    beforeEach(function createTestFixtures(done) {
+      Post.create([
+        { title: 'a', content: 'AAA' },
+        { title: 'b', content: 'BBB' },
+      ], done);
+    });
+    after(function deleteTestFixtures(done) {
+      Post.destroyAll(done);
+    });
+
+    context('like operator', function() {
+      context('with regex strings', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: '^A' }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: '^a', options: 'i' }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+      });
+
+      context('with regex literals', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: /^A/ }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: /^a/i }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+      });
+
+      context('with regex object', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: new RegExp(/^A/) }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { like: new RegExp(/^a/i) }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('AAA');
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    context('nlike operator', function() {
+      context('with regex strings', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: '^A' }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: '^a', options: 'i' }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
+      });
+
+      context('with regex literals', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: /^A/ }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: /^a/i }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
+      });
+
+      context('with regex object', function() {
+        context('using no flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: new RegExp(/^A/) }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
+
+        context('using flags', function() {
+          it('should work', function(done) {
+            Post.find({ where: { content: { nlike: new RegExp(/^a/i) }}}, function(err, posts) {
+              should.not.exist(err);
+              posts.length.should.equal(1);
+              posts[0].content.should.equal('BBB');
+              done();
+            });
+          });
+        });
       });
     });
   });

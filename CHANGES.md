@@ -1,3 +1,135 @@
+2017-06-28, Version 3.2.0
+=========================
+
+ * Remove the hard-coded writeConcern (Raymond Feng)
+
+ * Document strictObjectIDCorecion flag (Loay)
+
+ * Allow different forms of regexp on like/nlike op (ssh24)
+
+ * Require init on mocha args (ssh24)
+
+ * Use buildSort function to sort (ssh24)
+
+ * Add docker setup (#373) (Sakib Hasan)
+
+ * test: use mongodb-3.2 on Travis (#369) (Ryan Graham)
+
+
+2017-04-17, Version 3.1.0
+=========================
+
+ * Update connector version (#368) (Sakib Hasan)
+
+ * Replicate issue_template from loopback repo (#350) (siddhipai)
+
+ * Fix buildNearFilter to work with any key depth (#322) (Corentin H)
+
+ * Fix Update when id not found (Loay)
+
+ * Add additional envs for node v4/v6 (#365) (Sakib Hasan)
+
+ * Update node version (ssh24)
+
+ * Reconnect on execute after disconnect (#362) (phairow)
+
+ * update the near query with minDistance test (#361) (Vincent Wen)
+
+ * Fix lazy connect (#360) (phairow)
+
+ * Export the additional functions (#353) (James Cooke)
+
+ * Mongo 3.4 Support/Delete index ‘kind’ property from index options (#335) (Dylan Lundy)
+
+ * Update README.md (Rand McKinney)
+
+
+2017-02-13, Version 3.0.1
+=========================
+
+ * Remove invalid options (jannyHou)
+
+ * Add nestedProperty to connectorCapabilities (jannyHou)
+
+ * Update README.md (Rand McKinney)
+
+ * add info on url override (ivy ho)
+
+ * add link for loopback types to mongodb (ivy ho)
+
+ * replace MySQL with MongodDB (ivy ho)
+
+ * Update Readme with Properties (ivy ho)
+
+ * update lB connector version (Loay)
+
+ * Fix replaceById to report err when id not found (Loay Gewily)
+
+
+2017-01-13, Version 3.0.0
+=========================
+
+ * Delete extraneous `id` for replacById (Amir Jafarian)
+
+ * Update paid support URL (Siddhi Pai)
+
+ * Start 3.x + drop support for Node v0.10/v0.12 (siddhipai)
+
+ * Drop support for Node v0.10 and v0.12 (Siddhi Pai)
+
+ * Start the development of the next major version (Siddhi Pai)
+
+ * Update mongodb version (jannyHou)
+
+ * Update README with correct doc links, etc (Amir Jafarian)
+
+ * Ensure inq/nin use array cond value (Fabien Franzen)
+
+ * More ObjectID vs. String handling improvements (Fabien Franzen)
+
+ * Test returned info for #destroy (Fabien Franzen)
+
+ * Test fix for #253 (Fabien Franzen)
+
+ * Fix Copyright, use process.nextTick (Fabien Franzen)
+
+ * Fix all sorts of issues... (Fabien Franzen)
+
+ * Column renaming should be done before extended ops (Ian Zepp)
+
+ * Added support for renaming columns (Ian Zepp)
+
+
+2016-10-17, Version 1.17.0
+==========================
+
+ * Remove TEST prefix for env vars (#292) (Simon Ho)
+
+ * Add connectorCapabilities global object (Nick Duffy)
+
+ * Update translation files - round#2 (Candy)
+
+ * Update deps to loopback 3.0.0 RC (Miroslav Bajtoš)
+
+ * Remove conflict (jannyHou)
+
+ * fix maxDistance not supported in geo filter. (Vincent Wen)
+
+ * Use juggler@3 for running the tests (Miroslav Bajtoš)
+
+ * Remove !intl (jannyHou)
+
+ * Refactor (jannyHou)
+
+ * Globalization (jannyHou)
+
+ * Support patches afterwards (jannyHou)
+
+ * Use the latest compatible mongodb (jannyHou)
+
+ * Update URLs in CONTRIBUTING.md (#264) (Ryan Graham)
+
+
 2016-05-16, Version 1.15.2
 ==========================
 
