@@ -77,7 +77,7 @@
     "debug": "^2.1.1",
     "loopback-connector": "4.5.1",
     "mongodb": "^2.1.21",
-    "strong-globalize": "2.8.5"
+    "strong-globalize": "^2.8.5"
   },
   "deprecated": false,
   "description": "The official MongoDB connector for the LoopBack framework.",
