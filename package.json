@@ -76,7 +76,7 @@
     "async": "^1.0.0",
     "debug": "^2.1.1",
     "loopback-connector": "4.5.1",
-    "mongodb": "^2.1.21",
+    "mongodb": "^3.6.1",
     "strong-globalize": "^2.6.0"
   },
   "deprecated": false,
