@@ -119,5 +119,5 @@
     "posttest": "npm run lint",
     "test": "mocha -G --timeout 10000 --require test/init.js test/*.test.js"
   },
-  "version": "3.2.0"
+  "version": "3.2.1"
 }
