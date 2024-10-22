@@ -1,3 +1,300 @@
+2020-12-01, Version 5.5.0
+=========================
+
+ * atomic upsertWithWhere (#563) (Matteo Padovano)
+
+
+2020-09-02, Version 5.4.0
+=========================
+
+ * fix: allow to include options to mongodb connector (Jamil Omar)
+
+ * Update loopback-connector to 5.x (Miroslav Bajtoš)
+
+ * chore: switch to DCO (Diana Lau)
+
+ * docs: update loopback types link (Agnes Lin)
+
+ * chore: add Node.js 14 to travis (Diana Lau)
+
+ * Extract function that map db data to model entity (=)
+
+
+2020-07-10, Version 5.3.0
+=========================
+
+
+
+2020-07-10, Version 5.2.4
+=========================
+
+ * fix: sanitize extra dollar signs for operators (Agnes Lin)
+
+ * fix: fix (Agnes Lin)
+
+ * fix: allow arrays to be stored in type ObjecId (Agnes Lin)
+
+ * fix: fix sections order (Agnes Lin)
+
+ * chore: add bluemix security to the ci ignore list (Agnes Lin)
+
+ * docs: update Mongo connector readme with lb4 style (Agnes Lin)
+
+ * Update README.md (VusalIs)
+
+ * fix: throws when the custom id field name is set (Agnes Lin)
+
+ * Update strong-globalize to ^6.0 (Miroslav Bajtoš)
+
+ * Add Node.js 13.x to Travis matrix (Miroslav Bajtoš)
+
+ * Drop support for Node 8.x (Miroslav Bajtoš)
+
+ * chore: update strong-globalize version (Diana Lau)
+
+
+2020-03-19, Version 5.2.3
+=========================
+
+ * Exclude 'deps' and '.github' from npm publish (Dominique Emond)
+
+
+2020-02-10, Version 5.2.2
+=========================
+
+ * chore: update copyright year (Diana Lau)
+
+ * chore: update CODEOWNERS (Diana Lau)
+
+ * coerce property value defined as array of ObjectID (=)
+
+ * fix: update the error message and name (#561) (Janny)
+
+
+2019-11-22, Version 5.2.1
+=========================
+
+ * fix creation of LB4 models with auto-generated id (Miroslav Bajtoš)
+
+ * chore: improve issue and PR templates (Nora)
+
+ * feat: update dependenies (Francois)
+
+ * feat: upgrade to eslint v6 (Francois)
+
+
+2019-10-25, Version 5.2.0
+=========================
+
+ * Remove db.unref as it's not implemented (Raymond Feng)
+
+ * fixed linting errors (Louis Beullens)
+
+ * implicitNullType + tests (Louis Beullens)
+
+
+2019-10-24, Version 5.1.0
+=========================
+
+ * Resolve issue #540 for v4.2.0 (Herberts Cruz)
+
+ * Callback with url parsing error (Raymond Feng)
+
+
+2019-09-19, Version 5.0.1
+=========================
+
+ * fix: preserve id on update (Hage Yaapa)
+
+ * fix: call toDatabase update and upsert (alexandreferreira)
+
+ * docs: special characters in username and password (Hage Yaapa)
+
+
+2019-06-26, Version 5.0.0
+=========================
+
+ * chore: add coverage (Hage Yaapa)
+
+ * fix: ObjectID data type preservation (Hage Yaapa)
+
+ * feat: add mongodb.dataType to property definition (Hage Yaapa)
+
+ * chore: replace var with let and const (Hage Yaapa)
+
+ * chore: meaningful variable names (Hage Yaapa)
+
+ * Run shared tests from both v3 and v4 of juggler (Miroslav Bajtoš)
+
+ * Fix tests to correctly assert on MongoNetworkError (Miroslav Bajtoš)
+
+ * Add Node.js 12 to Travis CI platforms (Miroslav Bajtoš)
+
+ * specify downstreamIgnoreList in CI (Diana Lau)
+
+
+2019-05-03, Version 4.2.0
+=========================
+
+ * fix: edge cases to coerce nested decimal props (biniam)
+
+ * test: strict model update with mongo operators (biniam)
+
+ * chore: update copyrights years (Diana Lau)
+
+ * add check for embedded property type conversion (Dimitris)
+
+ * Remove port when using mongodb+srv (JREEVE)
+
+ * ci: fix previously failing tests (biniam)
+
+
+2019-04-12, Version 4.1.0
+=========================
+
+ * fix: coerce deep nested decimal properties (biniam)
+
+ * Fix missing '_id' when selected in filter.fields (#439) (Helge Willum Thingvad)
+
+
+2018-11-06, Version 4.0.0
+=========================
+
+ * Use new url parser by default (#462) (Hugo Da Roit)
+
+ * remove the infinite inspect (#480) (Janny)
+
+ * Add case insensitive indexes support (maxim.sharai)
+
+
+2018-10-23, Version 3.9.0
+=========================
+
+ * support decimal128 (#475) (Janny)
+
+ * Added `"authSource"` in doc connection properties (Rémi AUGUSTE)
+
+ * Convert embedded binary properties to buffer (ntsekouras)
+
+ * Convert projection fields option to object (Dimitris)
+
+
+2018-09-19, Version 3.8.0
+=========================
+
+ * fix performance issues on count #464 (Clément)
+
+ * feat: allow methods to pass strictObjectIDCoercion (virkt25)
+
+
+2018-09-14, Version 3.7.1
+=========================
+
+ * fix: map new names to old for connector hooks (virkt25)
+
+
+2018-09-12, Version 3.7.0
+=========================
+
+ * update deprecated mongo driver commands (Hugo Da Roit)
+
+ * Remove hard dependency of memwatch-next (Raymond Feng)
+
+ * Add support for protocol to be 'monogodb+srv' (Raymond Feng)
+
+
+2018-08-15, Version 3.6.0
+=========================
+
+ * docs: update with security consideration section (virkt25)
+
+ * fix: sanitize query by default (virkt25)
+
+ * change `count` to `countDocuments` (Rahmat Nugraha)
+
+ * add `useNewUrlParser` on validOptionNames (Rahmat Nugraha)
+
+ * Dedicated Model for testing disableDefaultSort (HugoPoi)
+
+ * Add disableDefaultSort in README (HugoPoi)
+
+ * Add settings disableDefaultSort for find method (HugoPoi)
+
+
+2018-07-23, Version 3.5.0
+=========================
+
+ * chore: drop node 4 and update deps (Taranveer Virk)
+
+ * [WebFM] cs/pl/ru translation (candytangnb)
+
+
+2018-06-05, Version 3.4.4
+=========================
+
+ * Fields projection fix (#436) (John Gonyo)
+
+
+2018-04-06, Version 3.4.3
+=========================
+
+ * update bson version (Diana Lau)
+
+
+2018-03-23, Version 3.4.2
+=========================
+
+ * chore:update CODEOWNERS (Diana Lau)
+
+ * Prioritize db url (Dimitris)
+
+ * CODEOWNERS: add nitro404 (Miroslav Bajtoš)
+
+
+2018-01-19, Version 3.4.1
+=========================
+
+ * fix: allow db name to be parsed from url (Raymond Feng)
+
+
+2018-01-19, Version 3.4.0
+=========================
+
+ * upgrade to mongodb driver 3.x (Raymond Feng)
+
+ * Alias find as findById (jannyHou)
+
+
+2017-12-04, Version 3.3.1
+=========================
+
+ * Switch to bson.ObjectID (#401) (Kevin Delisle)
+
+ * chore: update license (Diana Lau)
+
+
+2017-10-13, Version 3.3.0
+=========================
+
+ * update strong-globalize to 3.1.0 (shimks)
+
+ * Create Issue and PR Templates (#386) (Sakib Hasan)
+
+ * Use stalebot on this repo (#383) (Kevin Delisle)
+
+ * Use stalebot on this repo (Kevin Delisle)
+
+ * Add CODEOWNER file (Diana Lau)
+
+
+2017-07-10, Version 3.2.1
+=========================
+
+ * Apply feedback (ssh24)
+
+ * Add docs on lazyConnect flag (ssh24)
+
+
 2017-06-28, Version 3.2.0
 =========================
 
